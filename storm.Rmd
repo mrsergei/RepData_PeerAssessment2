@@ -1,0 +1,286 @@
+---
+title: 'Reproducible Research: Peer Assessment 2'
+output:
+  html_document:
+    keep_md: yes
+---
+
+### Summary/Synopsis   
+
+### Data Processing   
+
+Initializing and loading requried pakcages for processing and analysis
+```{r initiallise}
+require(knitr, quietly=TRUE)
+opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE)
+```
+
+```{r load libraries}
+require(dplyr, quietly=TRUE)
+require(lubridate, quietly=TRUE)
+require(ggplot2, quietly=TRUE)
+require(grid, quietly=TRUE)
+require(gridExtra, quietly=TRUE)
+require(scales, quietly=TRUE)
+require(maps, quietly=TRUE)
+data(state)
+```
+
+
+#### Creating tidy data set   
+
+The next few steps are designed to produce the data set containing mainly variable used in adta analysis grouped by state, year and storm / event type to produce analysis aroudn fatalities, injuriues, propety and crop damage across United States.   
+
+
+Data download and load into a data frame
+```{r dataload, results='hide', cache=TRUE}
+# Load the data from https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
+fileUrl  <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+fileName <- "stormData.csv.bz2"
+
+if(!file.exists(fileName)) {
+    download.file(fileUrl, destfile = fileName, method = "curl")
+}
+
+stormDF <- read.csv(fileName, stringsAsFactors=FALSE)
+```
+
+Analysing the stracutre of the Storm Data
+```{r}
+str(stormDF)
+```
+
+Tidying up the variabel names and adding "year" column
+```{r}
+names(stormDF) <- tolower(names(stormDF)) # tidy up the variabel names
+stormDF$evtype <- toupper(stormDF$evtype)
+stormDF$year <- year(as.Date(stormDF$bgn_date, "%m/%d/%Y"))
+```
+
+##### Converting state abbreviateion to state names   
+Comparing US State abbreviations in teh data set with the canonical 50 States. 
+```{r}
+unique(stormDF$state); length(unique(stormDF$state))
+state.abb; length(state.abb)
+states <- data.frame(state = state.abb, 
+                     state_name = tolower(state.name), 
+                     stringsAsFactors = FALSE)
+```
+
+See refernces for more infomration on US officlal states and territories.
+
+We will add a colum with US official state names where applicable
+```{r}
+# NOTE: left_join hangs R session if state_name colum already exist in stormDF data frame
+stormDF$state_name <- NULL
+stormDF <- left_join(stormDF, states, by="state")
+```
+
+
+##### Damage variable analysis and adjustment   
+
+We need to normalize exponents of the property and crop damages first. Then we will adjast the damage cost base on Consumer Price Index yearly inflation index.   
+
+First we notice iscrete nateur of the exponent data and some garbage that needs to be accoutned for while computing the cost of propery and crop damanges.   
+```{r}
+unique(stormDF$propdmgexp)
+unique(stormDF$cropdmgexp)
+```
+
+We will factorize the exponents and map them to the numeric values and compute property and crop damages.   
+
+```{r}
+levels(as.factor(stormDF$propdmgexp))
+levels(as.factor(stormDF$cropdmgexp))
+```
+
+Creating mumerical exponents vectors that correspomd to the above, converting property and crop damages into proper numerical form for furtehr analysis and finally adjsuting for inflation. We use 2011 dollars to calculate damage cosrts for the entire StormData set.   
+
+```{r}
+numpropexp <- c(0, 0, 0, 0, 0, 1:8, 9, 2, 2, 3, 6, 6)
+numcropexp <- c(0, 0, 0, 2, 9, 3, 3, 6, 6)
+
+stormDF$propdamage <- stormDF$propdmg * 10^numpropexp[as.numeric(as.factor(stormDF$propdmgexp))]
+stormDF$cropdamage <- stormDF$cropdmg * 10^numcropexp[as.numeric(as.factor(stormDF$cropdmgexp))]
+
+# compute adjustment factor based on Consumer Price Index data (CPI)
+cpi <- read.csv("http://research.stlouisfed.org/fred2/data/CPIAUCSL.csv", header = TRUE)
+cpi$year <- year(cpi$DATE)
+indx <- cpi %>% group_by(year) %>% summarize(indx = mean(VALUE))
+indx$indx <- indx$indx[indx$year == max(stormDF$year)]/indx$indx
+
+# adjsut costs to 2011 dollars
+stormDF$propdamage <- stormDF$propdamage * left_join(stormDF, indx, by="year")$indx
+stormDF$cropdamage <- stormDF$cropdamage * left_join(stormDF, indx, by="year")$indx
+```
+
+For furtehr analysis we will select only caraibles that are ysed to produce results.
+
+```{r}
+stormDF <- select(stormDF, 
+                  state, state_name, year, evtype, 
+                  fatalities, injuries, propdamage, cropdamage, remarks)
+str(stormDF)
+head(stormDF,20)
+```
+
+
+#### Storm Events categories normalization
+```{r}
+evtlookup <- function(s, v = T) {
+    unique(grep(s, tolower(df$evtype),value = v))
+}
+```
+
+
+
+
+```{r}
+stdf <- stormDF %>%
+    group_by(evtype) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n))
+```
+
+
+
+```{r}
+fatal_usa <- stormDF %>% 
+    filter(!(is.na(stormDF$state_name))) %>%
+    group_by(evtype) %>%
+    summarise(fatal_total = sum(fatalities)) %>%
+    arrange(desc(fatal_total)) %>%
+    mutate(rank=1:nrow(fatal_usa))
+```
+
+```{r}
+injury_usa <- stormDF %>%
+    filter(!(is.na(stormDF$state_name))) %>%
+    group_by(evtype) %>%
+    summarise(injury_total = sum(injuries)) %>%
+    arrange(desc(injury_total)) %>%
+    mutate(rank=1:nrow(injury_usa))
+```
+
+```{r}
+fatal_state <- stormDF %>% 
+    filter(!(is.na(stormDF$state_name))) %>%
+    group_by(state_name) %>% 
+    summarize(fatal_total = sum(fatalities)) %>%
+    arrange(desc(fatal_total))
+```
+
+```{r}
+injury_state <- stormDF %>% 
+    filter(!(is.na(stormDF$state_name))) %>%
+    group_by(state_name) %>%
+    summarise(injury_total = sum(injuries)) %>%
+    arrange(desc(injury_total))
+```
+
+```{r}
+storm_short <- stormDF %>%
+    filter(!(is.na(stormDF$state_name))) %>%
+    group_by(state_name, evtype) %>%
+    summarise(fatal_total = sum(fatalities), injury_total = sum(injuries)) %>%
+    arrange(desc(fatal_total), desc(injury_total))
+```
+
+
+```{r}
+states_map <- map_data("state")
+
+theme_map <- theme(axis.title = element_blank(),
+                   axis.text = element_blank(),
+                   axis.ticks = element_blank(),
+                   panel.border = element_blank(),
+                   panel.grid = element_blank(),
+                   panel.background = element_rect(fill = "white",  colour = NA))
+
+theme_bar <- theme(axis.title.y = element_blank(),
+                   axis.ticks.y = element_blank(),
+                   panel.grid.major.y = element_blank(),
+                   panel.border = element_blank()
+                   )
+
+g1 <- ggplot(fatal_state, aes(map_id = state_name)) + 
+    geom_map(aes(fill = fatal_total), map = states_map) +
+    scale_fill_gradient("Total", low = "#EEEEEE", high = "#990000") +
+    expand_limits(x = states_map$long, y = states_map$lat) +
+    ggtitle("Fatalities per state across USA") +
+    theme_map
+   
+g2 <- ggplot(injury_state, aes(map_id = state_name)) + 
+    geom_map(aes(fill = injury_total), map = states_map) +
+    scale_fill_gradient("Total", low = "#EEEEEE", high = "#003366") +
+    expand_limits(x = states_map$long, y = states_map$lat) +
+    ggtitle("Injuries per state across USA") +
+    theme_map
+
+g3 <- ggplot(fatal_usa[1:20,], aes(x=rank, y=fatal_total, fill=fatal_total)) +
+    geom_bar(stat="identity") + coord_flip() +
+    scale_fill_gradient("Count", low = "pink", high = "#990000") +
+    scale_x_reverse(breaks=1:20, labels=fatal_usa$evtype[1:20]) + 
+    scale_y_continuous(breaks=c(1000, 2000, 3000, 4000, 5000)) +
+    ggtitle("Total fatalities across USA for top 20 event categories") +
+    ylab("Total number of fatalities recorded") +
+    theme_bw() +
+    theme_bar
+    
+g4 <- ggplot(injury_usa[1:20,], aes(x=rank, y=injury_total, fill=injury_total)) +
+    geom_bar(stat="identity") + coord_flip() +
+    scale_fill_gradient("Count", low = "#66CCFF", high = "#003366") +
+    scale_x_reverse(breaks=1:20, labels=injury_usa$evtype[1:20]) + 
+    scale_y_continuous(breaks=c(20000, 40000, 60000, 80000)) +
+    ggtitle("Total injuries across USA for top 20 event categories") +
+    ylab("Total number of injuries recorded") +
+    theme_bw() +
+    theme_bar
+
+g4
+#grid.arrange(g1, g2, g3, g4, ncol=2)
+```
+
+```{r}
+library(grid)
+theme_bar <- theme(axis.title.y = element_blank(),
+                   axis.ticks.y = element_blank(),
+                   panel.grid.major.y = element_blank(),
+                   panel.border = element_blank()
+                   )
+
+p3 <- ggplot(fatal_usa[1:20,], aes(x=rank, y=fatal_total, fill=fatal_total)) +
+    geom_bar(stat="identity") + coord_flip() +
+    scale_fill_gradient("Count", low = "pink", high = "#990000") +
+    scale_x_reverse(breaks=1:20, labels=fatal_usa$evtype[1:20]) + 
+    scale_y_continuous(breaks=c(1000, 2000, 3000, 4000, 5000)) +
+    ggtitle("Total fatalities across USA for top 20 event categories") +
+    ylab("Total number of fatalities recorded") +
+    theme_bw() +
+    theme_bar
+    
+p4 <- ggplot(injury_usa[1:20,], aes(x=rank, y=injury_total, fill=injury_total)) +
+    geom_bar(stat="identity") + coord_flip() +
+    scale_fill_gradient("Count", low = "#66CCFF", high = "#003366") +
+    scale_x_reverse(breaks=1:20, labels=injury_usa$evtype[1:20]) + 
+    scale_y_continuous(breaks=c(20000, 40000, 60000, 80000)) +
+    ggtitle("Total injuries across USA for top 20 event categories") +
+    ylab("Total number of injuries recorded") +
+    theme_bw() +
+    theme_bar
+
+grid.arrange(p3, p4, ncol=2)
+
+```
+
+
+## Results
+
+
+## References
+
+['http://en.wikipedia.org/wiki/List_of_U.S._state_abbreviations']
+
+
+https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
+
