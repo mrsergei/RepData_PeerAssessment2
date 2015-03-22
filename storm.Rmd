@@ -10,11 +10,11 @@ This report focuses on analysis of storms and other severe weather events that c
 
 We show that tornadoes are the most harmful storm event for the population health (as measured by injuries and fatalities). Heat/excessive heat was the largest single cause of fatalities in 1995.  Flooding, thunderstorms and lightning  make notable contribution to the injury and fatality totals. Texas is number one state by number of fatalities and injuries.
 
-Floods are the primary cause of the property damange, with tornaods and hurricanes coming close. Drought, flood and ice storms are the primary couses of the crop damange in the US.
+Floods are the primary cause of the property damage, with tornados and hurricanes being close. Drought, flood and ice storms are the primary causes of the crop damage in the US.
 
 ## Data Processing   
 
-Initializing and loading requried pakcages for processing and analysis
+Initializing and loading required packages for processing and analysis
 ```{r initiallise}
 require(knitr, quietly=TRUE)
 opts_chunk$set(warning=FALSE, error=FALSE, message=FALSE)
@@ -31,7 +31,7 @@ require(maps, quietly=TRUE)
 data(state)
 ```
 
-Downloading the databses file and load it into a data frame:
+Downloading the databases file and load it into a data frame:
 ```{r dataload, results='hide', cache=TRUE}
 # Load the data from https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
 fileUrl  <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
@@ -46,21 +46,21 @@ stormDF <- read.csv(fileName, stringsAsFactors=FALSE)
 
 #### Creating tidy data set   
 
-The next few steps are designed to produce the data set containing mainly variables used in the adta analysis grouped by state, year and storm / event type to identify eventa that result in most fatalities, injuriues, propety and crop damage across United States.   
+The next few steps are designed to produce the data set containing mainly variables used in the data analysis grouped by state, year and storm / event type to identify events that result in most fatalities, injuries, property and crop damage across United States.   
 
-Analysing the strucutre of the Storm Data set
+Analyzing the structure of the Storm Data set
 ```{r data structure}
 str(stormDF)
 ```
 
 Tidying up the variable names and adding "year" column to enable easier analysis per year
 ```{r adding year}
-names(stormDF) <- tolower(names(stormDF)) # tidy up the variabel names
+names(stormDF) <- tolower(names(stormDF)) # tidy up the variable names
 stormDF$evtype <- toupper(stormDF$evtype)
 stormDF$year <- year(as.Date(stormDF$bgn_date, "%m/%d/%Y"))
 ```
 
-##### Converting state abbreviateion to the state names   
+##### Converting state abbreviation to the state names   
 Storm DB contains data for all official US territories from 1950 to the end of 2011. We will specifically focus our analysis only on canonical 50 States.   
 
 Comparing US State abbreviations in the data set with the canonical 50 States. 
@@ -72,11 +72,11 @@ states <- data.frame(state = state.abb,
                      stringsAsFactors = FALSE)
 ```
 
-See refernces for more infomration on US officlal states and territories.
+See references for more infomration on US official states and territories.
 
-We will add a colum with US official state names to enale per state analysis of the events.
+We will add a column with US official state names to enable per state analysis of the events.
 ```{r adding state names}
-# NOTE: left_join hangs R session if state_name colum already exist in stormDF data frame
+# NOTE: left_join hangs R session if state_name column already exist in stormDF data frame
 stormDF$state_name <- NULL
 stormDF <- left_join(stormDF, states, by="state")
 ```
@@ -84,9 +84,9 @@ stormDF <- left_join(stormDF, states, by="state")
 
 ##### Damage information analysis and adjustment   
 
-We need to explore and normalize the exponents of the property and crop damages first before computing the damanges. After we will need to adjast the damage cost using Consumer Price Index yearly index to account for inflation.   
+We need to explore and normalize the exponents of the property and crop damages first before computing the damages. After we will need to adjust the damage cost using Consumer Price Index yearly index to account for inflation.   
 
-First we notice discrete nature of the exponent data and some garbage that needs to be accoutned for while computing the cost of propery and crop damanges.   
+First we notice discrete nature of the exponent data and some garbage that needs to be accounted for while computing the cost of property and crop damages.   
 
 ```{r damage}
 unique(stormDF$propdmgexp)
@@ -100,7 +100,7 @@ levels(as.factor(stormDF$propdmgexp))
 levels(as.factor(stormDF$cropdmgexp))
 ```
 
-Creating mumerical exponents vectors that correspond to the above, converting property and crop damages into proper numerical form for furtehr analysis. 
+Creating numerical exponents vectors that correspond to the above, converting property and crop damages into proper numerical form for further analysis. 
 
 ```{r exponent conversion}
 numpropexp <- c(0, 0, 0, 0, 0, 1:8, 9, 2, 2, 3, 6, 6)
@@ -110,7 +110,7 @@ stormDF$propdamage <- stormDF$propdmg * 10^numpropexp[as.numeric(as.factor(storm
 stormDF$cropdamage <- stormDF$cropdmg * 10^numcropexp[as.numeric(as.factor(stormDF$cropdmgexp))]
 ```
 
-To accont for infation over the years, we use Consumer Price Index to convert the damange cost to 2011 dollar index and calculate the damage costs for the entire Storm dataset to enale accurate year to year damage cost analysis.   
+To account for inflation over the years, we use Consumer Price Index to convert the damage cost to 2011 dollar index and calculate the damage costs for the entire Storm dataset to enable accurate year to year damage cost analysis.   
 
 
 ```{r}
@@ -138,13 +138,13 @@ head(stormDF,20)
 
 #### Storm Events categories normalization
 
-We observe that number of unique severe weatehr event types recorded in the Storm Databse is significantly larger than 96 described in the Storm Data Event Table from "NATIONAL WEATHER SERVICE INSTRUCTION 10-1605" (see References section)
+We observe that number of unique severe weather event types recorded in the Storm Database is significantly larger than 96 described in the Storm Data Event Table from "NATIONAL WEATHER SERVICE INSTRUCTION 10-1605" (see References section)
 
 ```{r}
 length(unique(stormDF$evtype))
 ```
 
-Looking at the freqency of terms used and comparing event tnames to the documented standard 96 types we obeserve a number of duplicate types that need to be combined to accurately reflect the total impact form a given type of an event.
+Looking at the frequency of terms used and comparing event names to the documented standard 96 types we observe a number of duplicate types that need to be combined to accurately reflect the total impact form a given type of an event.
 
 ```{r}
 stdf <- stormDF %>%
@@ -207,7 +207,7 @@ stormDF$evtype[evtlookup("current", v=F)] ="RIP CURRENT"
 
 #### Finalizing the tidy data set
 
-Lastly we will group events by year and state and limit our analysis only to 50 canoncial states including only events that resulted in one or more health and/or economic problems(fatalities, injuries, property and crop damage)
+Lastly we will group events by year and state and limit our analysis only to 50 canonical states including only events that resulted in one or more health and/or economic problems(fatalities, injuries, property and crop damage)
 
 ```{r}
 stormDF <- stormDF %>% 
@@ -226,7 +226,7 @@ stormDF
 
 ## Results
 
-#### Analysis of the numer of fatalities and injuries
+#### Analysis of the number of fatalities and injuries
 
 To aid a graphical representation of the results we will compute a few summaries of the number of fatalities and injuries for event totals across US, totals breakdown by state and events breakdown by year.
 
@@ -296,6 +296,7 @@ theme_bar <- theme(axis.title.y = element_blank(),
 ```
 
 
+The following figure summarizes the analysis of the health consequences due to severe weather. It is organized by state, by event type, by year and event type  showing total number of fatalities and injuries.   
 
 ```{r fig.align='center', fig.width=10, fig.height=12, fig.cap="Health impact of the sever weather events"}
 g1 <- ggplot(fatal_state, aes(map_id = state_name)) + 
@@ -353,9 +354,23 @@ g6<- ggplot(injury_year, aes(x=year, y=injury_total, colour = evtype)) +
 grid.arrange(g1, g2, g3, g4, g5, g6, ncol=2)
 ```
 
+##### Discussion
 
-#### Analysis of the property and crop damange
-To aid a graphical representation of the results we will compute a few summaries of the property and crop damanges for event totals across US, totals breakdown by state and events breakdown by year.
+The figure above shows that tornadoes are the most harmful storm event for the population health (as measured by injuries and fatalities). Heat/excessive heat was the largest single cause of fatalities in 1995.  Flooding, thunderstorms and lightning  make notable contribution to the injury and fatality totals. Texas and Illinois clearly stand out as the states with the largest numbers of fatalities.  Texas is also number one state in number of injuries caused by severe weather events.  
+
+```{r}
+fatal_year$evtype[which.max(fatal_year$fatal_total)]
+fatal_year$year[which.max(fatal_year$fatal_total)]
+injury_year$evtype[which.max(injury_year$injury_total)]
+injury_year$year[which.max(injury_year$injury_total)]
+```
+
+As shown, heat in 1995 was the primary cause of the maximum fatalities within one single year. The maximum number of injuries within a single year is caused by 1974 tornados.   
+
+
+#### Analysis of the property and crop damage   
+
+To aid a graphical representation of the results we will compute a few summaries of the property and crop damages for event totals across US, totals breakdown by state and events breakdown by year.   
 
 ```{r}
 prop_usa <- stormDF %>% 
@@ -403,7 +418,7 @@ crop_year <- stormDF %>%
     arrange(year)
 ```
 
-
+The following figure summarizes the analysis of the economic consequences due to severe weather. It shows by state, by event type, by year and event type total cost of adjusted damages to property and crop.
 
 ```{r fig.align='center', fig.width=10, fig.height=12, fig.cap="Economic impact of the sever weather events"}
 g7 <- ggplot(prop_state, aes(map_id = state_name)) + 
@@ -446,7 +461,7 @@ g11 <- ggplot(prop_year, aes(x=year, y=damage, colour = evtype)) +
     scale_x_continuous(breaks=c(1950, 1960, 1970, 1980, 1990, 2000, 2010)) +
     scale_y_continuous(labels=c(0, 50, 100, 150)) +
     ggtitle("Property damage for top 5 types") +
-    xlab("Year") + ylab("Property damage, Billions of US dollars") +
+    xlab("Year") + ylab("Property damage, Billions") +
     theme_bw(base_size = 10) +
     theme(legend.position="left")
 
@@ -456,16 +471,28 @@ g12<- ggplot(crop_year, aes(x=year, y=damage, colour = evtype)) +
     scale_x_continuous(limits=c(1950, 2010), breaks=c(1950, 1960, 1970, 1980, 1990, 2000, 2010)) +
     scale_y_continuous(labels=c(0, 2, 4, 6, 8)) +
     ggtitle("Crop damage for top 5 types") +
-    xlab("Year") + ylab("Crop damages, Billions of US dollars") +
+    xlab("Year") + ylab("Crop damages, Billions") +
     theme_bw(base_size = 10) +
     theme(legend.position="left")
 
 grid.arrange(g7, g8, g9, g10, g11, g12, ncol=2)
 ```
 
+##### Discussion  
+
+The figure above demonstrates that floods are the primary cause of the property damage, with tornados and hurricanes being second close. Drought, flood and ice storms are the primary causes of the crop damage in the US. California clearly stands out as the state with most property damage overall. Texas, Mississippi and Illinois have most crop damage overall.   
+
+```{r}
+prop_year$evtype[which.max(prop_year$damage)]
+prop_year$year[which.max(prop_year$damage)]
+crop_year$evtype[which.max(crop_year$damage)]
+crop_year$year[which.max(crop_year$damage)]
+```
+
+As shown, maximum property damage within one single year is caused by flood in 2006. The maximum crop damage within a single year is caused by 1993 flood.   
 
 ## References
 
 http://en.wikipedia.org/wiki/List_of_U.S._state_abbreviations
-https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
 
+https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
