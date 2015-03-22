@@ -1,0 +1,8 @@
+base
+knitr
+dplyr
+lubridate
+ggplot2
+gridExtra
+scales
+maps
