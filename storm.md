@@ -3,14 +3,9 @@
 ## Summary/Synopsis   
 This report focuses on analysis of storms and other severe weather events that cause both public health and economic problems for communities and municipalities. We have analyzed the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database for severe events that result in fatalities, injuries, property and crop damages.
 
-We show that
+We show that tornadoes are the most harmful storm event for the population health (as measured by injuries and fatalities). Heat/excessive heat was the largest single cause of fatalities in 1995.  Flooding, thunderstorms and lightning  make notable contribution to the injury and fatality totals. Texas is number one state by number of fatalities and injuries.
 
-///Tornadoes are the most harmful storm event for population health (as measured by injuries and fatalities). Heat/excessive heat is the largest single cause of fatalities per year. Flooding and thunderstorms both make a major contribution to injury and fatality totals.
-
-Floods and hurricanes are the primary factors causing economic consequences. Tornadoes have caused much property damage over more years, and droughts are the primary additional factor causing crop damage.
-
-Lastly, it is important to remember that these results vary greatly by locality. Any prevention/response planning should be based on a finer grained analysis (e.g. by state) taking into account local characteristics.///
-
+Floods are the primary cause of the property damange, with tornaods and hurricanes coming close. Drought, flood and ice storms are the primary couses of the crop damange in the US.
 
 ## Data Processing   
 
@@ -162,9 +157,10 @@ stormDF <- left_join(stormDF, states, by="state")
 
 ##### Damage information analysis and adjustment   
 
-We need to normalize exponents of the property and crop damages first. Then we will adjast the damage cost base on Consumer Price Index yearly inflation index.   
+We need to explore and normalize the exponents of the property and crop damages first before computing the damanges. After we will need to adjast the damage cost using Consumer Price Index yearly index to account for inflation.   
 
 First we notice discrete nature of the exponent data and some garbage that needs to be accoutned for while computing the cost of propery and crop damanges.   
+
 
 ```r
 unique(stormDF$propdmgexp)
@@ -203,7 +199,7 @@ levels(as.factor(stormDF$cropdmgexp))
 ## [1] ""  "?" "0" "2" "B" "k" "K" "m" "M"
 ```
 
-Creating mumerical exponents vectors that correspomd to the above, converting property and crop damages into proper numerical form for furtehr analysis. 
+Creating mumerical exponents vectors that correspond to the above, converting property and crop damages into proper numerical form for furtehr analysis. 
 
 
 ```r
@@ -214,7 +210,7 @@ stormDF$propdamage <- stormDF$propdmg * 10^numpropexp[as.numeric(as.factor(storm
 stormDF$cropdamage <- stormDF$cropdmg * 10^numcropexp[as.numeric(as.factor(stormDF$cropdmgexp))]
 ```
 
-We use 2011 dollars to normalize and calculate the damage costs for the entire Storm dataset to enale accurate year to year damage cost analysis.   
+To accont for infation over the years, we use Consumer Price Index to convert the damange cost to 2011 dollar index and calculate the damage costs for the entire Storm dataset to enale accurate year to year damage cost analysis.   
 
 
 
@@ -230,7 +226,7 @@ stormDF$propdamage <- stormDF$propdamage * left_join(stormDF, indx, by="year")$i
 stormDF$cropdamage <- stormDF$cropdamage * left_join(stormDF, indx, by="year")$indx
 ```
 
-For our tidy data set we will select only the variables that are used in the current analysis
+For our tidy data set we are selecting only the variables that are used in further analysis
 
 
 ```r
@@ -282,7 +278,7 @@ head(stormDF,20)
 
 #### Storm Events categories normalization
 
-We observe that number of unique severe weatehr event types recorded in Storm Databse significantly larger than 96 describd in Storm Data Event Table from "NATIONAL WEATHER SERVICE INSTRUCTION 10-1605" (see References section)
+We observe that number of unique severe weatehr event types recorded in the Storm Databse is significantly larger than 96 described in the Storm Data Event Table from "NATIONAL WEATHER SERVICE INSTRUCTION 10-1605" (see References section)
 
 
 ```r
@@ -293,7 +289,7 @@ length(unique(stormDF$evtype))
 ## [1] 898
 ```
 
-Looking at the freqency of terms used and comparing to the documented standard 96 types we obeserve a number of duplicate types that need to nbe combined to accurately reflect the total impact form a given type of an event.
+Looking at the freqency of terms used and comparing event tnames to the documented standard 96 types we obeserve a number of duplicate types that need to be combined to accurately reflect the total impact form a given type of an event.
 
 
 ```r
@@ -321,7 +317,7 @@ stdf
 ## ..                ...    ...
 ```
 
-While categorizing all `898` recorded event types into `96` standard ones is by far beyond this particular report, we are going to account for some duplication and consolidate events across most frequent ones - analysing  top 50 most frequent event types in the data set.
+While categorizing all `898` recorded event types into `96` standard ones is far beyond this particular report, we are going to account for some duplication and consolidate events across most frequent ones.
 
 
 
@@ -434,7 +430,7 @@ stormDF$evtype[evtlookup("current", v=F)] ="RIP CURRENT"
 
 #### Finalizing the tidy data set
 
-Lastly we will group event by year and state and limit our analysis only to 50 canoncial states including only events that resulted in one or more health and/or economic problems(fatalities, injuries, property and crop damage)
+Lastly we will group events by year and state and limit our analysis only to 50 canoncial states including only events that resulted in one or more health and/or economic problems(fatalities, injuries, property and crop damage)
 
 
 ```r
@@ -471,6 +467,11 @@ stormDF
 ```
 
 ## Results
+
+#### Analysis of the numer of fatalities and injuries
+
+To aid a graphical representation of the results we will compute a few summaries of the number of fatalities and injuries for event totals across US, totals breakdown by state and events breakdown by year.
+
 
 
 ```r
@@ -544,6 +545,8 @@ theme_bar <- theme(axis.title.y = element_blank(),
 ```
 
 
+
+
 ```r
 g1 <- ggplot(fatal_state, aes(map_id = state_name)) + 
     geom_map(aes(fill = fatal_total), map = states_map) +
@@ -585,7 +588,8 @@ g5 <- ggplot(fatal_year, aes(x=year, y=fatal_total, colour = evtype)) +
     scale_x_continuous(breaks=c(1950, 1960, 1970, 1980, 1990, 2000, 2010)) +
     ggtitle("Fatalities for top 5 types") +
     xlab("Year") + ylab("Fatalities") +
-    theme_bw(base_size = 10)
+    theme_bw(base_size = 10) +
+    theme(legend.position="left")
 
 g6<- ggplot(injury_year, aes(x=year, y=injury_total, colour = evtype)) +
     geom_line(size = 2, alpha = 0.8) +
@@ -593,12 +597,17 @@ g6<- ggplot(injury_year, aes(x=year, y=injury_total, colour = evtype)) +
     scale_x_continuous(breaks=c(1950, 1960, 1970, 1980, 1990, 2000, 2010)) +
     ggtitle("Injuries for top 5 types") +
     xlab("Year") + ylab("Injuries") +
-    theme_bw(base_size = 10)
+    theme_bw(base_size = 10) +
+    theme(legend.position="left")
 #g6
 grid.arrange(g1, g2, g3, g4, g5, g6, ncol=2)
 ```
 
-<img src="storm_files/figure-html/unnamed-chunk-22-1.png" title="" alt="" style="display: block; margin: auto;" />
+<img src="storm_files/figure-html/unnamed-chunk-15-1.png" title="Health impact of the sever weather events" alt="Health impact of the sever weather events" style="display: block; margin: auto;" />
+
+
+#### Analysis of the property and crop damange
+To aid a graphical representation of the results we will compute a few summaries of the property and crop damanges for event totals across US, totals breakdown by state and events breakdown by year.
 
 
 ```r
@@ -651,6 +660,8 @@ crop_year <- stormDF %>%
     summarise(damage=sum(cropdamage)) %>%
     arrange(year)
 ```
+
+
 
 
 ```r
@@ -708,11 +719,10 @@ g12<- ggplot(crop_year, aes(x=year, y=damage, colour = evtype)) +
     theme_bw(base_size = 10) +
     theme(legend.position="left")
 
-#g12
 grid.arrange(g7, g8, g9, g10, g11, g12, ncol=2)
 ```
 
-<img src="storm_files/figure-html/unnamed-chunk-29-1.png" title="" alt="" style="display: block; margin: auto;" />
+<img src="storm_files/figure-html/unnamed-chunk-22-1.png" title="Economic impact of the sever weather events" alt="Economic impact of the sever weather events" style="display: block; margin: auto;" />
 
 
 ## References

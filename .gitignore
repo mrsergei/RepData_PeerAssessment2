@@ -2,3 +2,5 @@
 *.Rhistory
 *.csv
 *.bz2
+*.rdx
+*.rdb
