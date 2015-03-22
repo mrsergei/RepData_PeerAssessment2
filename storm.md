@@ -809,3 +809,7 @@ As shown, maximum property damage within one single year is caused by flood in 2
 http://en.wikipedia.org/wiki/List_of_U.S._state_abbreviations
 
 https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
+
+http://www.bls.gov/cpi/data.htm
+
+http://research.stlouisfed.org/fred2/data/CPIAUCSL.csv
